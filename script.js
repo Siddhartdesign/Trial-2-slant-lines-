@@ -1,5 +1,4 @@
-// Layout Lens — Drag + Delete + Soft Blue Dot + Glow Selected Line
-// + Slanted-line tool (45° upward "/")
+// Layout Lens — Drag + Delete + Dot + Lines + Slanted Line + Select Mode
 
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -8,7 +7,9 @@ const ctx = canvas.getContext('2d');
 const dotBtn = document.getElementById('dotBtn');
 const vertBtn = document.getElementById('vertBtn');
 const horiBtn = document.getElementById('horiBtn');
-const slantBtn = document.getElementById('slantBtn'); // NEW BUTTON
+const slantBtn = document.getElementById('slantBtn');
+const selectBtn = document.getElementById('selectBtn');  // NEW
+
 const ratioBtns = Array.from(document.querySelectorAll('.ratioBtn'));
 
 const deleteBtn = document.getElementById('deleteBtn');
@@ -19,7 +20,7 @@ const currentRatioLabel = document.getElementById('currentRatio');
 
 let mode = 'dot';
 let dots = [];
-let lines = [];   // vertical, horizontal, slanted
+let lines = [];
 let selected = null;
 
 let isDragging = false;
@@ -33,7 +34,7 @@ let stream = null;
 let frame = { x:0, y:0, w:0, h:0, ratio:1 };
 
 
-// --------------------------- CAMERA --------------------------------------
+// ---------------- CAMERA ----------------
 
 async function enumerateDevices() {
   try {
@@ -53,8 +54,8 @@ async function startCameraPreferRear() {
   } catch (e){}
 
   try {
-    const s2 = await navigator.mediaDevices.getUserMedia({ video:true });
-    attachStream(s2);
+    const s = await navigator.mediaDevices.getUserMedia({ video:true });
+    attachStream(s);
     await enumerateDevices();
   } catch(e2) {
     alert("Camera error");
@@ -84,7 +85,8 @@ async function switchCamera(){
   }
 }
 
-// --------------------------- FRAME ---------------------------------------
+
+// ---------------- FRAME ----------------
 
 function computeFrame(ratio){
   const W = canvas.width, H = canvas.height;
@@ -107,15 +109,16 @@ function computeFrame(ratio){
     ratio===1.618 ? "Golden" : (Math.round(ratio*1000)/1000);
 }
 
-// --------------------------- DRAWING -------------------------------------
+
+// ---------------- DRAWING ----------------
 
 function drawMaskAndBorder(){
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
 
-  ctx.fillRect(0,0,canvas.width, frame.y);                               // top
-  ctx.fillRect(0,frame.y+frame.h, canvas.width, canvas.height-(frame.y+frame.h)); // bottom
-  ctx.fillRect(0,frame.y, frame.x, frame.h);                              // left
-  ctx.fillRect(frame.x+frame.w,frame.y, canvas.width-(frame.x+frame.w), frame.h); // right
+  ctx.fillRect(0,0,canvas.width, frame.y);
+  ctx.fillRect(0,frame.y+frame.h, canvas.width, canvas.height-(frame.y+frame.h));
+  ctx.fillRect(0,frame.y, frame.x, frame.h);
+  ctx.fillRect(frame.x+frame.w,frame.y, canvas.width-(frame.x+frame.w), frame.h);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.95)';
   ctx.lineWidth = 3;
@@ -124,7 +127,6 @@ function drawMaskAndBorder(){
 
 function redraw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
   drawMaskAndBorder();
 
   // dots
@@ -177,7 +179,8 @@ function redraw(){
   ctx.shadowBlur = 0;
 }
 
-// ------------------------- HIT TESTING -----------------------------------
+
+// ---------------- HIT TEST ----------------
 
 function pointToSegmentDistance(px,py,x1,y1,x2,y2){
   const A = px - x1;
@@ -195,14 +198,11 @@ function pointToSegmentDistance(px,py,x1,y1,x2,y2){
   else if (param > 1) { xx = x2; yy = y2; }
   else { xx = x1 + param * C; yy = y1 + param * D; }
 
-  const dx = px - xx;
-  const dy = py - yy;
-  return Math.sqrt(dx*dx + dy*dy);
+  return Math.hypot(px - xx, py - yy);
 }
 
 function findLineAt(x,y){
   const threshold = 18;
-
   for (let i=0;i<lines.length;i++){
     const l = lines[i];
 
@@ -221,15 +221,16 @@ function findLineAt(x,y){
     }
 
     else if (l.orientation==='slanted'){
-      const d = pointToSegmentDistance(x,y,l.x1,l.y1,l.x2,l.y2);
-      if (d < threshold) return i;
+      if (pointToSegmentDistance(x,y,l.x1,l.y1,l.x2,l.y2) < threshold){
+        return i;
+      }
     }
   }
-
   return null;
 }
 
-// ------------------------- INPUT EVENTS ----------------------------------
+
+// ---------------- INPUT ----------------
 
 canvas.addEventListener('pointerdown',(e)=>{
   const x = e.clientX;
@@ -238,7 +239,23 @@ canvas.addEventListener('pointerdown',(e)=>{
   lastPointerX = x;
   lastPointerY = y;
 
-  // check selection
+  // SELECT MODE
+  if (mode === 'select'){
+    const hit = findLineAt(x,y);
+    if (hit !== null){
+      selected = hit;
+      deleteBtn.style.display = "inline-block";
+      isDragging = true;
+      redraw();
+    } else {
+      selected = null;
+      deleteBtn.style.display = "none";
+      redraw();
+    }
+    return;
+  }
+
+  // check normal selection (other modes)
   const hit = findLineAt(x,y);
   if (hit!==null){
     selected = hit;
@@ -281,28 +298,26 @@ canvas.addEventListener('pointerdown',(e)=>{
     return;
   }
 
-  // --- SLANTED MODE (45° upward "/") ---
+  // --- SLANTED Mode ---
   if (mode==='slant'){
     const cx = Math.max(frame.x, Math.min(frame.x+frame.w, x));
     const cy = Math.max(frame.y, Math.min(frame.y+frame.h, y));
 
-    const length = frame.w * 0.75;   // long like your other lines
-    const angle = -Math.PI/4;        // 45° upward (/)
+    const length = frame.w * 0.75;
+    const angle = -Math.PI/4;
 
     const dx = Math.cos(angle) * length/2;
     const dy = Math.sin(angle) * length/2;
 
-    const x1 = cx - dx;
-    const y1 = cy - dy;
-    const x2 = cx + dx;
-    const y2 = cy + dy;
-
     lines.push({
       orientation:'slanted',
-      x1, y1, x2, y2
+      x1: cx - dx,
+      y1: cy - dy,
+      x2: cx + dx,
+      y2: cy + dy
     });
 
-    selected = lines.length-1;
+    selected = lines.length - 1;
     deleteBtn.style.display = "inline-block";
     redraw();
     return;
@@ -322,11 +337,9 @@ canvas.addEventListener('pointermove',(e)=>{
   if (l.orientation==='vertical'){
     l.x = Math.max(frame.x, Math.min(frame.x+frame.w, l.x + dx));
   }
-
   else if (l.orientation==='horizontal'){
     l.y = Math.max(frame.y, Math.min(frame.y+frame.h, l.y + dy));
   }
-
   else if (l.orientation==='slanted'){
     l.x1 += dx; l.y1 += dy;
     l.x2 += dx; l.y2 += dy;
@@ -338,35 +351,28 @@ canvas.addEventListener('pointermove',(e)=>{
   redraw();
 });
 
-canvas.addEventListener('pointerup',()=>{ isDragging = false; });
+canvas.addEventListener('pointerup',()=>{
+  isDragging = false;
+});
 
-// ----------------------------- MODES -------------------------------------
+
+// ---------------- MODES ----------------
 
 function setMode(m,id){
   mode = m;
-  [dotBtn,vertBtn,horiBtn,slantBtn].forEach(b=>b.classList.remove('active'));
+  [dotBtn,vertBtn,horiBtn,slantBtn,selectBtn]
+    .forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
 dotBtn.onclick = ()=> setMode('dot','dotBtn');
 vertBtn.onclick = ()=> setMode('vertical','vertBtn');
 horiBtn.onclick = ()=> setMode('horizontal','horiBtn');
-slantBtn.onclick = ()=> setMode('slant','slantBtn'); // NEW
+slantBtn.onclick = ()=> setMode('slant','slantBtn');
+selectBtn.onclick = ()=> setMode('select','selectBtn');
 
-ratioBtns.forEach(btn=>{
-  btn.onclick = ()=>{
-    ratioBtns.forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
 
-    const v = btn.dataset.r;
-    const ratio = v.includes("/") ? eval(v) : parseFloat(v);
-
-    computeFrame(ratio);
-    redraw();
-  };
-});
-
-// -------------------------- DELETE LINE ---------------------------------
+// ---------------- DELETE LINE ----------------
 
 deleteBtn.onclick = ()=>{
   if (selected!==null){
@@ -377,7 +383,8 @@ deleteBtn.onclick = ()=>{
   }
 };
 
-// --------------------------- CAPTURE ------------------------------------
+
+// ---------------- CAPTURE ----------------
 
 captureBtn.onclick = ()=>{
   const tmp=document.createElement('canvas');
@@ -387,19 +394,16 @@ captureBtn.onclick = ()=>{
 
   tctx.drawImage(video,0,0,tmp.width,tmp.height);
 
-  // mask
   tctx.fillStyle='rgba(0,0,0,0.45)';
   tctx.fillRect(0,0,tmp.width, frame.y);
   tctx.fillRect(0,frame.y+frame.h, tmp.width, tmp.height-(frame.y+frame.h));
   tctx.fillRect(0,frame.y, frame.x, frame.h);
   tctx.fillRect(frame.x+frame.w,frame.y, tmp.width-(frame.x+frame.w), frame.h);
 
-  // frame border
   tctx.strokeStyle='rgba(255,255,255,0.95)';
   tctx.lineWidth=3;
   tctx.strokeRect(frame.x+1.5,frame.y+1.5,frame.w-3,frame.h-3);
 
-  // dots
   dots.forEach(d=>{
     tctx.fillStyle="#4da3ff";
     tctx.beginPath(); tctx.arc(d.x,d.y,8,0,Math.PI*2);
@@ -409,7 +413,6 @@ captureBtn.onclick = ()=>{
     tctx.stroke();
   });
 
-  // lines
   lines.forEach(l=>{
     tctx.strokeStyle="lime";
     tctx.lineWidth=4;
@@ -419,12 +422,10 @@ captureBtn.onclick = ()=>{
       tctx.moveTo(l.x,frame.y);
       tctx.lineTo(l.x,frame.y+frame.h);
     }
-
     else if (l.orientation==='horizontal'){
       tctx.moveTo(frame.x,l.y);
       tctx.lineTo(frame.x+frame.w,l.y);
     }
-
     else if (l.orientation==='slanted'){
       tctx.moveTo(l.x1,l.y1);
       tctx.lineTo(l.x2,l.y2);
@@ -445,7 +446,8 @@ captureBtn.onclick = ()=>{
   }
 };
 
-// ----------------------------- INIT -------------------------------------
+
+// ---------------- INIT ----------------
 
 function resize(){
   canvas.width=window.innerWidth;
