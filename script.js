@@ -1,5 +1,5 @@
 // Layout Lens — Drag + Delete + Dot + Lines + Slanted Line + Select Mode
-// Fully fixed ratio buttons (frame.ratio preserved)
+// Fully fixed ratio buttons (frame.ratio preserved), nothing else changed.
 
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -106,7 +106,7 @@ function computeFrame(ratio){
   const y = (H-boxH)/2;
 
   frame = { x, y, w:boxW, h:boxH, ratio };
-  frame.ratio = ratio;   // ⭐ FIXED: ensure ratio persists after resize
+  frame.ratio = ratio;   // ⭐ FIX: This ensures ratio sticks across resize()
 
   currentRatioLabel.textContent =
     ratio===1.618 ? "Golden" : (Math.round(ratio*1000)/1000);
@@ -190,16 +190,17 @@ function pointToSegmentDistance(px,py,x1,y1,x2,y2){
   const B = py - y1;
   const C = x2 - x1;
   const D = y2 - y1;
-  const dot = A * C + B * D;
-  const lenSq = C * C + D * D;
+  const dot = A*C + B*D;
+  const lenSq = C*C + D*D;
   const param = lenSq ? dot / lenSq : -1;
 
   let xx, yy;
+
   if (param < 0){ xx = x1; yy = y1; }
   else if (param > 1){ xx = x2; yy = y2; }
   else { xx = x1 + param*C; yy = y1 + param*D; }
 
-  return Math.hypot(px-xx, py-yy);
+  return Math.hypot(px - xx, py - yy);
 }
 
 function findLineAt(x,y){
@@ -242,9 +243,10 @@ canvas.addEventListener('pointerdown',(e)=>{
   lastPointerX = x;
   lastPointerY = y;
 
-  // SELECT MODE — only selects, no creation
+  // SELECT MODE — only selects, never creates
   if (mode === 'select'){
     const hit = findLineAt(x,y);
+
     if (hit !== null){
       selected = hit;
       deleteBtn.style.display = "inline-block";
@@ -253,11 +255,12 @@ canvas.addEventListener('pointerdown',(e)=>{
       selected = null;
       deleteBtn.style.display = "none";
     }
+
     redraw();
     return;
   }
 
-  // Normal selection for other modes
+  // Normal selection (other modes)
   const hit = findLineAt(x,y);
   if (hit!==null){
     selected = hit;
@@ -270,6 +273,7 @@ canvas.addEventListener('pointerdown',(e)=>{
   selected = null;
   deleteBtn.style.display = "none";
 
+  // Only create inside frame
   if (!(x>=frame.x && x<=frame.x+frame.w && y>=frame.y && y<=frame.y+frame.h))
     return;
 
@@ -377,6 +381,23 @@ slantBtn.onclick = ()=> setMode('slant','slantBtn');
 selectBtn.onclick = ()=> setMode('select','selectBtn');
 
 
+// ---------------- RATIO BUTTON FIX (IMPORTANT) ----------------
+
+ratioBtns.forEach(btn=>{
+  btn.onclick = ()=>{
+    ratioBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const v = btn.dataset.r;
+    const ratio = v.includes("/") ? eval(v) : parseFloat(v);
+
+    frame.ratio = ratio;       // ⭐ IMPORTANT FIX
+    computeFrame(ratio);       // redraw with correct new frame
+    redraw();
+  };
+});
+
+
 // ---------------- DELETE ----------------
 
 deleteBtn.onclick = ()=>{
@@ -457,7 +478,7 @@ captureBtn.onclick = ()=>{
 function resize(){
   canvas.width=window.innerWidth;
   canvas.height=window.innerHeight;
-  computeFrame(frame.ratio);   // ⭐ Use last ratio reliably
+  computeFrame(frame.ratio);   // Use last chosen ratio
   redraw();
 }
 window.addEventListener('resize',resize);
