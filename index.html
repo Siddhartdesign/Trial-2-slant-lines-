@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<title>Layout Lens — Framed Camera</title>
+
+<style>
+  :root {
+    --toolbar-bg: rgba(0,0,0,0.55);
+    --btn-bg: rgba(255,255,255,0.8);
+    --btn-active: #4da3ff;
+  }
+
+  html,body { height:100%; margin:0; overflow:hidden; background:#000; touch-action:none; }
+
+  video,canvas {
+    position:absolute; top:0; left:0;
+    width:100vw; height:100vh;
+    object-fit:cover;
+  }
+
+  #toolbar {
+    position:fixed;
+    bottom:14px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:8px;
+    background:var(--toolbar-bg);
+    padding:10px 12px;
+    border-radius:14px;
+    backdrop-filter:blur(6px);
+    z-index:40;
+  }
+
+  .btn {
+    padding:8px 12px;
+    border-radius:8px;
+    border:0;
+    background:var(--btn-bg);
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  .btn.active {
+    background:var(--btn-active);
+    color:#fff;
+  }
+
+  #deleteBtn { display:none; }
+
+  #note {
+    position:fixed;
+    top:12px;
+    left:12px;
+    color:#fff;
+    background:rgba(0,0,0,0.35);
+    padding:6px 8px;
+    border-radius:8px;
+    font-size:13px;
+    z-index:40;
+  }
+</style>
+</head>
+<body>
+
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+
+<div id="note">Frame: <span id="currentRatio">1:1</span></div>
+
+<div id="toolbar">
+  <button id="dotBtn" class="btn active">Dot</button>
+  <button id="vertBtn" class="btn">│</button>
+  <button id="horiBtn" class="btn">—</button>
+
+  <button class="btn ratioBtn" data-r="1">1:1</button>
+  <button class="btn ratioBtn" data-r="5/7">5:7</button>
+  <button class="btn ratioBtn" data-r="4/5">4:5</button>
+  <button class="btn ratioBtn" data-r="1.618">Golden</button>
+
+  <button id="deleteBtn" class="btn">🗑</button>
+
+  <button id="captureBtn" class="btn">📸</button>
+  <button id="switchBtn" class="btn">Switch</button>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
