@@ -1,49 +1,178 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta charset="utf-8">
-<title>Viewfinder UI Layout</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artist Viewfinder (Free-Rotation Slant Line)</title>
+
+  <style>
+    html,body {
+      margin: 0;
+      height: 100%;
+      background: #111;
+      color: #eee;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    #app {
+      position: fixed;
+      inset: 0;
+      touch-action: none;
+    }
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .ui {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    button {
+      background: #222;
+      border: 1px solid #444;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
 </head>
 
 <body>
+<div id="app">
+  <canvas id="vf"></canvas>
 
-<video id="video" autoplay playsinline muted></video>
-<canvas id="canvas"></canvas>
-
-<!-- LEFT SIDE CONTROLS -->
-<div id="leftControls">
-
-  <!-- FRAME BUTTON (circle -> expands UP) -->
-  <div id="frameContainer">
-    <button id="frameBtn" class="circle-btn semi">◧</button>
-
-    <!-- Expanded frame menu -->
-    <div id="frameMenu" class="frame-menu hidden">
-      <button class="frameOption" data-r="1">1:1</button>
-      <button class="frameOption" data-r="5/7">5:7</button>
-      <button class="frameOption" data-r="4/5">4:5</button>
-      <button class="frameOption" data-r="1.618">Golden</button>
-    </div>
+  <div class="ui">
+    <button id="addH">Add Horizontal</button>
+    <button id="addV">Add Vertical</button>
+    <button id="addS">Add Slant</button>
+    <button id="clear">Clear</button>
   </div>
-
-  <!-- LINE BUTTON (horizontal pill, always visible) -->
-  <div id="lineContainer">
-    <button id="lineBtn" class="pill-btn semi">• │ — /</button>
-  </div>
-
 </div>
 
-<!-- RIGHT SIDE CONTROLS -->
-<div id="rightControls">
+<script>
+(() => {
+  const canvas = document.getElementById("vf");
+  const ctx = canvas.getContext("2d");
 
-  <button id="shutterBtn" class="circle-btn big semi black"></button>
-  <button id="selectBtn" class="circle-btn semi pink"></button>
-  <button id="deleteBtn" class="circle-btn semi red"></button>
+  const lines = [];   // stores all guide lines
+  let dragging = null; // { line: {}, end: "end1" | "end2" }
 
-</div>
+  // Resize canvas
+  function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    draw();
+  }
+  addEventListener("resize", resize);
+  resize();
 
-<script src="script.js"></script>
+  // Add guide lines
+  function addLine(type) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    if (type === "h") {
+      lines.push({ x1: 0, y1: cy, x2: canvas.width, y2: cy });
+    }
+    if (type === "v") {
+      lines.push({ x1: cx, y1: 0, x2: cx, y2: canvas.height });
+    }
+    if (type === "s") {
+      // Slant line starts horizontal → user rotates it
+      lines.push({ x1: cx - 80, y1: cy, x2: cx + 80, y2: cy });
+    }
+
+    draw();
+  }
+
+  // Draw everything
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "white";
+
+    for (const L of lines) {
+      // Line
+      ctx.beginPath();
+      ctx.moveTo(L.x1, L.y1);
+      ctx.lineTo(L.x2, L.y2);
+      ctx.stroke();
+
+      // Drag handle 1
+      ctx.fillStyle = "#aaa";
+      ctx.beginPath();
+      ctx.arc(L.x1, L.y1, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Drag handle 2
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(L.x2, L.y2, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Pointer events
+  function pointerDown(e) {
+    const x = e.clientX;
+    const y = e.clientY;
+
+    for (const L of lines) {
+      // Check handle 1
+      let dx = x - L.x1;
+      let dy = y - L.y1;
+      if (dx * dx + dy * dy < 14 * 14) {
+        dragging = { line: L, end: "end1" };
+        return;
+      }
+
+      // Check handle 2
+      dx = x - L.x2;
+      dy = y - L.y2;
+      if (dx * dx + dy * dy < 14 * 14) {
+        dragging = { line: L, end: "end2" };
+        return;
+      }
+    }
+  }
+
+  function pointerMove(e) {
+    if (!dragging) return;
+
+    if (dragging.end === "end1") {
+      dragging.line.x1 = e.clientX;
+      dragging.line.y1 = e.clientY;
+    } else {
+      dragging.line.x2 = e.clientX;
+      dragging.line.y2 = e.clientY;
+    }
+
+    draw();
+  }
+
+  function pointerUp() {
+    dragging = null;
+  }
+
+  canvas.addEventListener("pointerdown", pointerDown);
+  addEventListener("pointermove", pointerMove);
+  addEventListener("pointerup", pointerUp);
+
+  // UI buttons
+  document.getElementById("addH").onclick = () => addLine("h");
+  document.getElementById("addV").onclick = () => addLine("v");
+  document.getElementById("addS").onclick = () => addLine("s");
+  document.getElementById("clear").onclick = () => { lines.length = 0; draw(); };
+
+})();
+</script>
 </body>
 </html>
