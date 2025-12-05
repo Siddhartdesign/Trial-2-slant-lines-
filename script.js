@@ -1,5 +1,4 @@
-// Layout Lens — Stable Version + SAFE Select Mode
-// Ratios working, slanted lines working, dragging working, delete working.
+// Layout Lens — Stable Version + SAFE Select Mode + Two-Finger Rotation for Slanted Lines
 
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -9,7 +8,7 @@ const dotBtn = document.getElementById('dotBtn');
 const vertBtn = document.getElementById('vertBtn');
 const horiBtn = document.getElementById('horiBtn');
 const slantBtn = document.getElementById('slantBtn');
-const selectBtn = document.getElementById('selectBtn'); // NEW SELECT BUTTON
+const selectBtn = document.getElementById('selectBtn');
 
 const ratioBtns = Array.from(document.querySelectorAll('.ratioBtn'));
 
@@ -28,11 +27,17 @@ let isDragging = false;
 let lastPointerX = 0;
 let lastPointerY = 0;
 
+// For rotation
+let rotationActive = false;
+let initialAngle = 0;
+let initialTouchAngle = 0;
 
-// CAMERA
 let devices = [];
 let currentDeviceIndex = 0;
 let stream = null;
+
+
+// CAMERA ---------------------------------------------------
 
 async function enumerateDevices() {
   try {
@@ -84,7 +89,8 @@ async function switchCamera(){
 }
 
 
-// FRAME
+// FRAME ---------------------------------------------------
+
 let frame = { x:0, y:0, w:0, h:0, ratio:1 };
 
 function computeFrame(ratio){
@@ -109,17 +115,19 @@ function computeFrame(ratio){
 }
 
 
-// DRAWING
+// DRAWING ---------------------------------------------------
+
 function drawMaskAndBorder(){
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillStyle='rgba(0,0,0,0.45)';
+
   ctx.fillRect(0,0,canvas.width, frame.y);
   ctx.fillRect(0,frame.y+frame.h, canvas.width, canvas.height-(frame.y+frame.h));
   ctx.fillRect(0,frame.y, frame.x, frame.h);
   ctx.fillRect(frame.x+frame.w,frame.y, canvas.width-(frame.x+frame.w), frame.h);
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(frame.x+1.5, frame.y+1.5, frame.w-3, frame.h-3);
+  ctx.strokeStyle='rgba(255,255,255,0.95)';
+  ctx.lineWidth=3;
+  ctx.strokeRect(frame.x+1.5,frame.y+1.5,frame.w-3,frame.h-3);
 }
 
 function redraw(){
@@ -128,12 +136,12 @@ function redraw(){
 
   // dots
   for (const d of dots){
-    ctx.fillStyle = "#4da3ff";
+    ctx.fillStyle="#4da3ff";
     ctx.beginPath();
     ctx.arc(d.x,d.y,8,0,Math.PI*2);
     ctx.fill();
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle="#fff";
+    ctx.lineWidth=2;
     ctx.stroke();
   }
 
@@ -143,14 +151,14 @@ function redraw(){
     const sel = (i===selected);
 
     if (sel){
-      ctx.shadowColor = "cyan";
-      ctx.shadowBlur = 14;
-      ctx.strokeStyle = "cyan";
-      ctx.lineWidth = 4;
+      ctx.shadowColor="cyan";
+      ctx.shadowBlur=14;
+      ctx.strokeStyle="cyan";
+      ctx.lineWidth=4;
     } else {
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = "lime";
-      ctx.lineWidth = 3;
+      ctx.shadowBlur=0;
+      ctx.strokeStyle="lime";
+      ctx.lineWidth=3;
     }
 
     ctx.beginPath();
@@ -159,12 +167,10 @@ function redraw(){
       ctx.moveTo(l.x, frame.y);
       ctx.lineTo(l.x, frame.y+frame.h);
     }
-
     else if (l.orientation==='horizontal'){
       ctx.moveTo(frame.x, l.y);
       ctx.lineTo(frame.x+frame.w, l.y);
     }
-
     else if (l.orientation==='slanted'){
       ctx.moveTo(l.x1, l.y1);
       ctx.lineTo(l.x2, l.y2);
@@ -173,11 +179,12 @@ function redraw(){
     ctx.stroke();
   }
 
-  ctx.shadowBlur = 0;
+  ctx.shadowBlur=0;
 }
 
 
-// HIT TEST
+// HIT TEST ---------------------------------------------------
+
 function pointToSegmentDistance(px,py,x1,y1,x2,y2){
   const A=px-x1, B=py-y1, C=x2-x1, D=y2-y1;
   const dot=A*C+B*D, len=C*C+D*D;
@@ -212,29 +219,28 @@ function findLineAt(x,y){
 }
 
 
-// INPUT (SELECT MODE ADDED SAFELY)
+// INPUT (SELECT MODE + ROTATION) --------------------------------------------
+
 canvas.addEventListener('pointerdown',(e)=>{
   const x=e.clientX, y=e.clientY;
   lastPointerX=x; lastPointerY=y;
 
-  // -------------------------
-  // SELECT MODE — ONLY SELECT
-  // -------------------------
+  // SELECT MODE
   if (mode === 'select'){
-    const hit = findLineAt(x,y);
-    if (hit !== null){
-      selected = hit;
+    const hit=findLineAt(x,y);
+    if (hit!==null){
+      selected=hit;
       deleteBtn.style.display="inline-block";
-      isDragging = true;
+      isDragging=true;
     } else {
-      selected = null;
+      selected=null;
       deleteBtn.style.display="none";
     }
     redraw();
     return;
   }
 
-  // Normal selection for other modes
+  // normal selection
   const hit=findLineAt(x,y);
   if(hit!==null){
     selected=hit;
@@ -247,7 +253,7 @@ canvas.addEventListener('pointerdown',(e)=>{
   selected=null;
   deleteBtn.style.display="none";
 
-  // creation only inside frame
+  // create only inside frame
   if(!(x>=frame.x && x<=frame.x+frame.w && y>=frame.y && y<=frame.y+frame.h)) return;
 
   if(mode==='dot'){
@@ -285,7 +291,7 @@ canvas.addEventListener('pointerdown',(e)=>{
     lines.push({
       orientation:'slanted',
       x1:cx-dx, y1:cy-dy,
-      x2:cx+dx, y2:cy+dy
+      x2:cx+dx, y2+dy
     });
 
     selected=lines.length-1;
@@ -295,9 +301,76 @@ canvas.addEventListener('pointerdown',(e)=>{
   }
 });
 
-// DRAGGING
+
+// ROTATION (TWO-FINGER ONLY FOR SLANTED LINES) -------------------------------
+
+canvas.addEventListener('touchstart', (e)=>{
+  if (mode !== 'select') return;
+  if (selected === null) return;
+
+  const l = lines[selected];
+  if (l.orientation !== 'slanted') return;
+
+  if (e.touches.length === 2){
+    rotationActive = true;
+
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+
+    const touchAngle = Math.atan2(t2.clientY - t1.clientY,
+                                  t2.clientX - t1.clientX);
+
+    const dx = l.x2 - l.x1;
+    const dy = l.y2 - l.y1;
+
+    initialAngle = Math.atan2(dy, dx);
+    initialTouchAngle = touchAngle;
+  }
+});
+
+canvas.addEventListener('touchmove', (e)=>{
+  if (!rotationActive) return;
+  if (selected === null) return;
+
+  const l = lines[selected];
+  if (l.orientation !== 'slanted') return;
+
+  if (e.touches.length !== 2) return;
+
+  const t1 = e.touches[0];
+  const t2 = e.touches[1];
+
+  const newTouchAngle = Math.atan2(t2.clientY - t1.clientY,
+                                   t2.clientX - t1.clientX);
+
+  const angleDelta = newTouchAngle - initialTouchAngle;
+  const newAngle = initialAngle + angleDelta;
+
+  const midX = (l.x1 + l.x2) / 2;
+  const midY = (l.y1 + l.y2) / 2;
+
+  const length = Math.hypot(l.x2 - l.x1, l.y2 - l.y1);
+
+  const dx = Math.cos(newAngle) * length/2;
+  const dy = Math.sin(newAngle) * length/2;
+
+  l.x1 = midX - dx;
+  l.y1 = midY - dy;
+  l.x2 = midX + dx;
+  l.y2 = midY + dy;
+
+  redraw();
+});
+
+canvas.addEventListener('touchend', ()=>{
+  rotationActive = false;
+});
+
+
+// DRAGGING ---------------------------------------------------
+
 canvas.addEventListener('pointermove',(e)=>{
-  if(!isDragging || selected===null) return;
+  if (!isDragging || selected===null || rotationActive) return;
 
   const dx=e.clientX-lastPointerX;
   const dy=e.clientY-lastPointerY;
@@ -323,10 +396,11 @@ canvas.addEventListener('pointermove',(e)=>{
   redraw();
 });
 
-canvas.addEventListener('pointerup',()=> isDragging=false);
+canvas.addEventListener('pointerup', ()=> isDragging=false);
 
 
-// MODES
+// MODES ------------------------------------------------------
+
 function setMode(m,id){
   mode=m;
   [dotBtn,vertBtn,horiBtn,slantBtn,selectBtn]
@@ -341,7 +415,8 @@ slantBtn.onclick=()=>setMode('slant','slantBtn');
 selectBtn.onclick=()=>setMode('select','selectBtn');
 
 
-// RATIO BUTTONS (unchanged, SAFE)
+// RATIOS ------------------------------------------------------
+
 ratioBtns.forEach(btn=>{
   btn.onclick=()=>{
     ratioBtns.forEach(b=>b.classList.remove('active'));
@@ -356,7 +431,8 @@ ratioBtns.forEach(btn=>{
 });
 
 
-// DELETE
+// DELETE -------------------------------------------------------
+
 deleteBtn.onclick=()=>{
   if(selected!==null){
     lines.splice(selected,1);
@@ -367,7 +443,8 @@ deleteBtn.onclick=()=>{
 };
 
 
-// CAPTURE (unchanged)
+// CAPTURE ------------------------------------------------------
+
 captureBtn.onclick=()=>{
   const tmp=document.createElement('canvas');
   tmp.width=canvas.width; tmp.height=canvas.height;
@@ -411,7 +488,8 @@ captureBtn.onclick=()=>{
 };
 
 
-// INIT
+// INIT --------------------------------------------------------
+
 function resize(){
   canvas.width=window.innerWidth;
   canvas.height=window.innerHeight;
