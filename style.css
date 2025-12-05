@@ -1,0 +1,110 @@
+/* GENERAL */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+  touch-action: none;
+}
+
+video, canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+}
+
+/* BUTTON STYLES */
+.circle-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.big {
+  width: 72px;
+  height: 72px;
+}
+
+.pill-btn {
+  padding: 12px 26px;
+  border-radius: 28px;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* COLORS */
+.semi {
+  background: rgba(255,255,255,0.13);
+  backdrop-filter: blur(8px);
+}
+
+.black { background: rgba(0,0,0,0.55); }
+.pink  { background: rgba(255,150,220,0.6); }
+.red   { background: rgba(255,70,70,0.7); }
+
+/* LEFT SIDE LAYOUT */
+#leftControls {
+  position: fixed;
+  bottom: 20px;
+  left: 12px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  z-index: 40;
+}
+
+/* FRAME BUTTON + MENU */
+#frameContainer {
+  position: relative;
+}
+
+#frameMenu {
+  position: absolute;
+  bottom: 60px; /* expands UP */
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0,0,0,0.45);
+  padding: 8px;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+
+.frameOption {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-size: 15px;
+}
+
+.hidden { display: none; }
+
+/* RIGHT SIDE LAYOUT */
+#rightControls {
+  position: fixed;
+  bottom: 20px;
+  right: 12px;
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  align-items: center;
+  z-index: 40;
+}
+
+/* DELETE BUTTON POSITION */
+#deleteBtn {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+}
