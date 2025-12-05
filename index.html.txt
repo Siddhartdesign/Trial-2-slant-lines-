@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<title>Viewfinder UI Layout</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+
+<!-- LEFT SIDE CONTROLS -->
+<div id="leftControls">
+
+  <!-- FRAME BUTTON (circle -> expands UP) -->
+  <div id="frameContainer">
+    <button id="frameBtn" class="circle-btn semi">◧</button>
+
+    <!-- Expanded frame menu -->
+    <div id="frameMenu" class="frame-menu hidden">
+      <button class="frameOption" data-r="1">1:1</button>
+      <button class="frameOption" data-r="5/7">5:7</button>
+      <button class="frameOption" data-r="4/5">4:5</button>
+      <button class="frameOption" data-r="1.618">Golden</button>
+    </div>
+  </div>
+
+  <!-- LINE BUTTON (horizontal pill, always visible) -->
+  <div id="lineContainer">
+    <button id="lineBtn" class="pill-btn semi">• │ — /</button>
+  </div>
+
+</div>
+
+<!-- RIGHT SIDE CONTROLS -->
+<div id="rightControls">
+
+  <button id="shutterBtn" class="circle-btn big semi black"></button>
+  <button id="selectBtn" class="circle-btn semi pink"></button>
+  <button id="deleteBtn" class="circle-btn semi red"></button>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
